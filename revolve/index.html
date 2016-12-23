@@ -45,9 +45,10 @@
     const controlWidth = 130;
     const margin = 15;
     const sections = 4;
-    const sliderText = ['Lines = ', 'Timing = '];
-    let sliderNums = [50, 50];
+    const sliderText = ['Lines = ', 'Timing = ', 'Active Lines = '];
+    let sliderNums = [50, 50, 0];
     let gap = (height-margin)/(2*sliderNums[0]);
+    let lineGap = Math.floor(sliderNums[0]*sections/sliderNums[2]);
     let dragging = false;
     let start = Date.now();
 
@@ -106,12 +107,15 @@
             .on("drag", function() {dragEvent(0)})
             .on("end", dragEnd));
 
-
         d3.select('#ball1').call(d3.drag()
             .on("start", dragStart)
             .on("drag", function() {dragEvent(1)})
-            .on("end", dragEnd))
+            .on("end", dragEnd));
 
+        d3.select('#ball2').call(d3.drag()
+            .on("start", dragStart)
+            .on("drag", function() {dragEvent(2)})
+            .on("end", dragEnd))
     }
 
     d3.timer(animate);
@@ -120,7 +124,10 @@
         if (!dragging) {
             let count = Math.floor(((Date.now() - start)*sliderNums[0]*sliderNums[1])/20000);
             d3.select('#lines').selectAll('line').classed('active', false);
-            d3.select('#line' + count%(sliderNums[0]*sections)).classed('active', true);
+            for(let i = 0; i<sliderNums[2]; i++) {
+                console.log(i +', ' + gap + ', ' + (count+i*lineGap)%(sliderNums[0]*sections));
+                d3.select('#line' + (count+i*lineGap)%(sliderNums[0]*sections)).classed('active', true);
+            }
         }
     }
 
@@ -130,8 +137,15 @@
     }
 
     function dragEvent(index) {
-        sliderNums[index] = Math.max(Math.min(d3.event.x, 100),10);
-        d3.select('#ball' + index).attr('cx', sliderNums[index]);
+        if (index == 2) {
+            lineGap = Math.floor(sliderNums[0]*sections/sliderNums[2]);
+            sliderNums[index] = Math.floor(Math.max(Math.min(d3.event.x, 100),10)/20);
+            d3.select('#ball' + index).attr('cx', sliderNums[index]*20);
+        } else {
+            sliderNums[index] = Math.floor(Math.max(Math.min(d3.event.x, 100),10));
+            d3.select('#ball' + index).attr('cx', sliderNums[index]);
+        }
+
         d3.select('#text' + index).text(sliderText[index] + sliderNums[index]);
 
         if (index == 0) {
@@ -146,6 +160,7 @@
 
     function updateLines() {
         gap = (height-margin)/(2*sliderNums[0]);
+        lineGap = Math.floor(sliderNums[0]*sections/sliderNums[2]);
         d3.select('#lines').selectAll('line').classed('blank', true);
         for (let i = 0; i < sliderNums[0]*sections; i++) {
             d3.select('#line' + i)
