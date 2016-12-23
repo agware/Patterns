@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>For Jade</title>
+
+    <style>
+
+        line {
+            stroke: #000;
+            stroke-width: 1px;
+            stroke-opacity: 0.1;
+        }
+
+        .active {
+            stroke-opacity: 1;
+            stroke-width: 2px;
+        }
+
+    </style>
+
+</head>
+<body>
+
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script>
+
+    const height = 600;
+    const margin = 10;
+    const sections = 4;
+    const lines = 80;
+    const gap = (height-margin)/(2*lines);
+    const timing = 10;
+    let start = Date.now();
+
+    let svg = d3.select('body').append('svg')
+        .attr('height', height)
+        .attr('width', height);
+
+    let g = svg.append('g')
+        .attr('transform', 'translate(' + (height/2) + ',' + (height/2) + ')');
+
+    g.selectAll('line')
+        .data(d3.range(lines*sections))
+        .enter()
+        .append('line')
+        .attr('x1', function(d) {return (lines - d%lines)*gap; })
+        .attr('y2', function(d) {return (d%lines)*gap; })
+        .attr('transform', function(d) {return 'rotate(' + Math.floor(d/lines)*(360/sections) + ')'; })
+        .attr('id', function(d) {return 'line' + d});
+
+    d3.timer(animate);
+
+    function animate() {
+        let count = Math.floor((Date.now() - start)/timing);
+        g.selectAll('line').classed('active', false);
+        d3.select('#line' + count%(lines*sections)).classed('active', true);
+    }
+
+</script>
+
+</body>
+</html>
