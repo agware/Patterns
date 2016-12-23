@@ -118,7 +118,7 @@
 
     function animate() {
         if (!dragging) {
-            let count = Math.floor((Date.now() - start)*sliderNums[1]/750);
+            let count = Math.floor(((Date.now() - start)*sliderNums[0]*sliderNums[1])/20000);
             d3.select('#lines').selectAll('line').classed('active', false);
             d3.select('#line' + count%(sliderNums[0]*sections)).classed('active', true);
         }
