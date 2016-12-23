@@ -6,15 +6,28 @@
 
     <style>
 
+        div {
+            float: left;
+        }
+
         line {
             stroke: #000;
             stroke-width: 1px;
             stroke-opacity: 0.1;
         }
 
+        circle {
+            fill: #98d0ff;
+        }
+
         .active {
+            stroke: #000;
             stroke-opacity: 1;
             stroke-width: 2px;
+        }
+
+        .blank {
+            stroke-opacity: 0;
         }
 
     </style>
@@ -22,39 +35,125 @@
 </head>
 <body>
 
+<div id="animation"></div>
+<div id="control"></div>
+
 <script src="https://d3js.org/d3.v4.min.js"></script>
 <script>
 
     const height = 600;
-    const margin = 10;
+    const controlWidth = 130;
+    const margin = 15;
     const sections = 4;
-    const lines = 80;
-    const gap = (height-margin)/(2*lines);
-    const timing = 10;
+    const sliderText = ['Lines = ', 'Timing = '];
+    let sliderNums = [50, 50];
+    let gap = (height-margin)/(2*sliderNums[0]);
+    let dragging = false;
     let start = Date.now();
 
-    let svg = d3.select('body').append('svg')
-        .attr('height', height)
-        .attr('width', height);
+    initAnimation();
+    initControl();
 
-    let g = svg.append('g')
-        .attr('transform', 'translate(' + (height/2) + ',' + (height/2) + ')');
+    function initAnimation() {
+        let svg = d3.select('div#animation').append('svg')
+            .attr('height', height)
+            .attr('width', height);
 
-    g.selectAll('line')
-        .data(d3.range(lines*sections))
-        .enter()
-        .append('line')
-        .attr('x1', function(d) {return (lines - d%lines)*gap; })
-        .attr('y2', function(d) {return (d%lines)*gap; })
-        .attr('transform', function(d) {return 'rotate(' + Math.floor(d/lines)*(360/sections) + ')'; })
-        .attr('id', function(d) {return 'line' + d});
+        svg.append('g')
+            .attr('transform', 'translate(' + (height/2) + ',' + (height/2) + ')')
+            .attr('id', 'lines');
+
+        d3.select('#lines').selectAll('line')
+            .data(d3.range((controlWidth - 2*margin)*sections))
+            .enter()
+            .append('line')
+            .attr('id', function(d) {return 'line' + d; });
+
+        updateLines();
+    }
+
+    function initControl() {
+
+        let controlSvg = d3.select('div#control').append('svg')
+            .attr('height', height)
+            .attr('width', controlWidth);
+
+        controlSvg.append('g')
+            .attr('transform', 'translate(' + margin + ',' + 60 + ')' )
+            .attr('id', 'sliders');
+        d3.select('#sliders').selectAll('g')
+            .data(d3.range(sliderText.length))
+            .enter()
+            .append('g')
+            .attr('transform', function(d) {return 'translate(0,' + 80*d + ')'; })
+            .attr('id', function(d) {return 'slider' + d;});
+
+        for(let i=0; i < sliderText.length; i++) {
+            d3.select('#slider' + i).append('text')
+                .attr('y', -30)
+                .attr('id', 'text' + i)
+                .text(sliderText[i] + sliderNums[i]);
+            d3.select('#slider' + i).append('line')
+                .attr('x2', controlWidth - 2*margin);
+            d3.select('#slider' + i).append('circle')
+                .attr('cx', sliderNums[i])
+                .attr('r', 10)
+                .attr('id', 'ball' + i);
+        }
+
+        d3.select('#ball0').call(d3.drag()
+            .on("start", dragStart)
+            .on("drag", function() {dragEvent(0)})
+            .on("end", dragEnd));
+
+
+        d3.select('#ball1').call(d3.drag()
+            .on("start", dragStart)
+            .on("drag", function() {dragEvent(1)})
+            .on("end", dragEnd))
+
+    }
 
     d3.timer(animate);
 
     function animate() {
-        let count = Math.floor((Date.now() - start)/timing);
-        g.selectAll('line').classed('active', false);
-        d3.select('#line' + count%(lines*sections)).classed('active', true);
+        if (!dragging) {
+            let count = Math.floor((Date.now() - start)*sliderNums[1]/750);
+            d3.select('#lines').selectAll('line').classed('active', false);
+            d3.select('#line' + count%(sliderNums[0]*sections)).classed('active', true);
+        }
+    }
+
+    function dragStart() {
+        dragging = true;
+        d3.select(this).classed('active', true);
+    }
+
+    function dragEvent(index) {
+        sliderNums[index] = Math.max(Math.min(d3.event.x, 100),10);
+        d3.select('#ball' + index).attr('cx', sliderNums[index]);
+        d3.select('#text' + index).text(sliderText[index] + sliderNums[index]);
+
+        if (index == 0) {
+            updateLines();
+        }
+    }
+
+    function dragEnd() {
+        dragging = false;
+        d3.select(this).classed('active', false);
+    }
+
+    function updateLines() {
+        gap = (height-margin)/(2*sliderNums[0]);
+        d3.select('#lines').selectAll('line').classed('blank', true);
+        for (let i = 0; i < sliderNums[0]*sections; i++) {
+            d3.select('#line' + i)
+                .attr('x1', (sliderNums[0] - i%sliderNums[0])*gap)
+                .attr('y2', (i%sliderNums[0])*gap)
+                .attr('transform', 'rotate(' + Math.floor(i/sliderNums[0])*(360/sections) + ')')
+                .classed('blank', false);
+        }
     }
 
 </script>
