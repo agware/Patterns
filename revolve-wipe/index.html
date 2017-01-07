@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>For Jade</title>
+    <title>Revolve 2</title>
 
     <style>
 
@@ -30,6 +30,7 @@
             stroke-opacity: 0;
         }
 
+
     </style>
 
 </head>
@@ -39,25 +40,28 @@
 <div id="control"></div>
 
 <script src="https://d3js.org/d3.v4.min.js"></script>
+<script type='text/javascript' src='sliders.js'></script>
 <script>
 
     const height = 600;
     const margin = 10;
-    const sections = 4;
-    const slider = [{'name': 'No. of Lines = ', 'input' : 10, 'scaling': 2, 'min': 10, 'max': 100},
-                    {'name': 'Speed = ', 'input' : 50, 'scaling': 10, 'min': 10, 'max': 100},
-                    {'name': 'Active Lines = ', 'input' : 30, 'scaling': 25, 'min': 0, 'max': 100}];
 
+    const sections = 4;
+
+    let inputs = [{'id': 'activeLines', 'name': 'Active Lines', 'val': 1, 'min': 1, 'max': 4},
+                  {'id': 'noOfLines', 'name': 'No of Lines', 'val': 20, 'min': 10, 'max': 50},
+                  {'id': 'speed', 'name': 'Speed', 'val': 5, 'min': 1, 'max': 10}];
     let hiding = false;
     let dragging = false;
     let start = Date.now();
-    let mem = 0;
+    let count = 0;
 
     initAnimation();
-    initControl();
+    initSliders(inputs);
+
+    d3.timer(animate);
 
     function initAnimation() {
-
         let svg = d3.select('div#animation').append('svg')
             .attr('height', height)
             .attr('width', height);
@@ -67,130 +71,80 @@
             .attr('id', 'lines');
 
         d3.select('#lines').selectAll('line')
-            .data(d3.range((slider[0].max/slider[0].scaling)*sections))
+            .data(d3.range(inputs[1].max*sections))
             .enter()
             .append('line')
             .attr('id', function(d) {return 'line' + d; });
 
-        updateLines();
+        resetLines();
     }
-
-    function initControl() {
-        const controlWidth = 200;
-
-        let controlSvg = d3.select('div#control').append('svg')
-            .attr('height', height)
-            .attr('width', controlWidth);
-
-        initSliders();
-        attachActions();
-
-        function initSliders() {
-            const ballRadius = 15;
-
-            controlSvg.append('g')
-                .attr('transform', 'translate(' + ballRadius + ',' + 60 + ')' )
-                .attr('id', 'sliders');
-            d3.select('#sliders').selectAll('g')
-                .data(d3.range(slider.length))
-                .enter()
-                .append('g')
-                .attr('transform', function(d) {return 'translate(0,' + 80*d + ')'; })
-                .attr('id', function(d) {return 'slider' + d;});
-
-            for(let i=0; i < slider.length; i++) {
-                d3.select('#slider' + i).append('text')
-                    .attr('y', -30)
-                    .attr('id', 'text' + i);
-                d3.select('#slider' + i).append('line')
-                    .attr('x2', slider[i].max);
-                d3.select('#slider' + i).append('circle')
-                    .attr('r', 15)
-                    .attr('id', 'ball' + i);
-
-                updateSlider(i);
-            }
-        }
-
-        function attachActions() {
-            d3.select('#ball0').call(d3.drag()
-                .on("start", dragStart)
-                .on("drag", function() {dragEvent(0)})
-                .on("end", dragEnd));
-
-            d3.select('#ball1').call(d3.drag()
-                .on("start", dragStart)
-                .on("drag", function() {dragEvent(1)})
-                .on("end", dragEnd));
-
-            d3.select('#ball2').call(d3.drag()
-                .on("start", dragStart)
-                .on("drag", function() {dragEvent(2)})
-                .on("end", dragEnd))
-        }
-
-    }
-
-    d3.timer(animate);
 
     function animate() {
         if (!dragging) {
-            console.log(slider[0].input + ', ' + slider[1].input + ', ' + (slider[0].input*(slider[1].input/slider[1].scaling))/(slider[0].max*slider[1].max*2));
-            let count = Math.floor(((Date.now() - start)*slider[0].input*(slider[1].input/slider[1].scaling))/(slider[0].max*slider[1].max*3));
-            console.log(count);
-            d3.select('#lines').selectAll('line')
-                .classed('active', false);
-            for(let i = 0; i<Math.floor(slider[2].input/slider[2].scaling); i++) {
-                let lineGap = Math.floor(Math.floor(slider[0].input/slider[0].scaling)*sections/Math.floor(slider[2].input/slider[2].scaling));
-                let lineSelect = Math.floor((count+i*lineGap)%((slider[0].input/slider[0].scaling)*sections));
-                d3.select('#line' + lineSelect)
-                    .classed('active', true)
-                    .classed('hidden', hiding);
+            let lineNum = inputs[1].val * sections;
+            let speed = inputs[2].val*lineNum/(inputs[0].val*10);
+            let t = ((Date.now() - start) / 1000) % (lineNum);
 
-                if (lineSelect == 0) {
-                    hiding = !(d3.select('#line' + ((slider[0].input/slider[0].scaling)*sections-1)).classed('hidden'));
+            while (count < (t*speed)) {
+                let lineGap = Math.floor(lineNum / inputs[0].val);
+                d3.select('#lines').selectAll('line')
+                    .classed('active', false);
+
+                for (let i = 0; i < inputs[0].val; i++) {
+                    let lineSelect = Math.floor((count + i * lineGap) % (lineNum));
+                    d3.select('#line' + lineSelect)
+                        .classed('active', true)
+                        .classed('hidden', hiding);
+
+                    if (lineSelect == 0) {
+                        hiding = !(d3.select('#line' + (lineNum - 1)).classed('hidden'));
+                    }
                 }
+                count += 1;
             }
         }
     }
 
-    function dragStart() {
-        dragging = true;
-        d3.select(this).classed('active', true);
-    }
-
-    function dragEvent(index) {
-        slider[index].input = Math.floor(Math.max(Math.min(d3.event.x, slider[index].max),slider[index].min));
-        updateSlider(index);
-
-        updateLines();
-    }
-
-    function dragEnd() {
-        dragging = false;
-        d3.select(this).classed('active', false);
-    }
-
-    function updateSlider(index) {
-        d3.select('#ball' + index).attr('cx', slider[index].input);
-        d3.select('#text' + index).text(slider[index].name + Math.floor(slider[index].input/slider[index].scaling));
-    }
-
-    function updateLines() {
-        let lineNum = slider[0].input/slider[0].scaling;
-        let gap = (height-margin)/(2*lineNum);
+    function resetLines() {
+        let gap = (height-margin)/(2*inputs[1].val);
         d3.select('#lines').selectAll('line').classed('hidden', true);
-        for (let i = 0; i < lineNum*sections; i++) {
+        for (let i = 0; i < inputs[1].val*sections; i++) {
             d3.select('#line' + i)
-                .attr('x1', (lineNum - i%lineNum)*gap)
-                .attr('y2', (i%lineNum)*gap)
-                .attr('transform', 'rotate(' + Math.floor(i/lineNum)*(360/sections) + ')');
+                .attr('x1', (inputs[1].val - i%inputs[1].val)*gap)
+                .attr('y2', (i%inputs[1].val)*gap)
+                .attr('transform', 'rotate(' + Math.floor(i/inputs[1].val)*(360/sections) + ')');
         }
         start = Date.now();
+        count = 0;
         hiding = false;
     }
 
-</script>
+    function dragSlider(ball) {
+        let id = ball.attr('id');
+        id = id.substring(0, id.length - 4);
+        let index = -1;
 
+        switch(id) {
+            case inputs[0].id:
+                index = 0;
+                break;
+            case inputs[1].id:
+                index = 1;
+                break;
+            case inputs[2].id:
+                index = 2;
+                break;
+        }
+
+        let sliderScale = d3.scaleLinear()
+            .domain([0,100])
+            .range([inputs[index].min, inputs[index].max]);
+
+        inputs[index].val = Math.round(sliderScale(ball.attr('cx')));
+
+        resetLines();
+    }
+
+
+</script>
 </body>
-</html>
