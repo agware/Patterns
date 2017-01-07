@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>For Jade</title>
+    <title>Revolve 2</title>
 
     <style>
 
@@ -26,9 +26,10 @@
             stroke-width: 2px;
         }
 
-        .blank {
+        .hidden {
             stroke-opacity: 0;
         }
+
 
     </style>
 
@@ -39,21 +40,25 @@
 <div id="control"></div>
 
 <script src="https://d3js.org/d3.v4.min.js"></script>
+<script type='text/javascript' src='sliders.js'></script>
 <script>
 
     const height = 600;
-    const controlWidth = 130;
-    const margin = 15;
+    const margin = 10;
+
     const sections = 4;
-    const sliderText = ['Lines = ', 'Timing = ', 'Active Lines = '];
-    let sliderNums = [50, 50, 0];
-    let gap = (height-margin)/(2*sliderNums[0]);
-    let lineGap = Math.floor(sliderNums[0]*sections/sliderNums[2]);
+
+    let inputs = [{'id': 'activeLines', 'name': 'Active Lines', 'val': 1, 'min': 1, 'max': 4},
+        {'id': 'noOfLines', 'name': 'No of Lines', 'val': 20, 'min': 10, 'max': 50},
+        {'id': 'speed', 'name': 'Speed', 'val': 5, 'min': 1, 'max': 10}];
     let dragging = false;
     let start = Date.now();
+    let count = 0;
 
     initAnimation();
-    initControl();
+    initSliders(inputs);
+
+    d3.timer(animate);
 
     function initAnimation() {
         let svg = d3.select('div#animation').append('svg')
@@ -65,113 +70,75 @@
             .attr('id', 'lines');
 
         d3.select('#lines').selectAll('line')
-            .data(d3.range((controlWidth - 2*margin)*sections))
+            .data(d3.range(inputs[1].max*sections))
             .enter()
             .append('line')
             .attr('id', function(d) {return 'line' + d; });
 
-        updateLines();
+        resetLines();
     }
-
-    function initControl() {
-
-        let controlSvg = d3.select('div#control').append('svg')
-            .attr('height', height)
-            .attr('width', controlWidth);
-
-        controlSvg.append('g')
-            .attr('transform', 'translate(' + margin + ',' + 60 + ')' )
-            .attr('id', 'sliders');
-        d3.select('#sliders').selectAll('g')
-            .data(d3.range(sliderText.length))
-            .enter()
-            .append('g')
-            .attr('transform', function(d) {return 'translate(0,' + 80*d + ')'; })
-            .attr('id', function(d) {return 'slider' + d;});
-
-        for(let i=0; i < sliderText.length; i++) {
-            d3.select('#slider' + i).append('text')
-                .attr('y', -30)
-                .attr('id', 'text' + i)
-                .text(sliderText[i] + sliderNums[i]);
-            d3.select('#slider' + i).append('line')
-                .attr('x2', controlWidth - 2*margin);
-            d3.select('#slider' + i).append('circle')
-                .attr('cx', sliderNums[i])
-                .attr('r', 10)
-                .attr('id', 'ball' + i);
-        }
-
-        d3.select('#ball0').call(d3.drag()
-            .on("start", dragStart)
-            .on("drag", function() {dragEvent(0)})
-            .on("end", dragEnd));
-
-        d3.select('#ball1').call(d3.drag()
-            .on("start", dragStart)
-            .on("drag", function() {dragEvent(1)})
-            .on("end", dragEnd));
-
-        d3.select('#ball2').call(d3.drag()
-            .on("start", dragStart)
-            .on("drag", function() {dragEvent(2)})
-            .on("end", dragEnd))
-    }
-
-    d3.timer(animate);
 
     function animate() {
         if (!dragging) {
-            let count = Math.floor(((Date.now() - start)*sliderNums[0]*sliderNums[1])/20000);
-            d3.select('#lines').selectAll('line').classed('active', false);
-            for(let i = 0; i<sliderNums[2]; i++) {
-                console.log(i +', ' + gap + ', ' + (count+i*lineGap)%(sliderNums[0]*sections));
-                d3.select('#line' + (count+i*lineGap)%(sliderNums[0]*sections)).classed('active', true);
+            let lineNum = inputs[1].val * sections;
+            let speed = inputs[2].val*lineNum/(inputs[0].val*10);
+            let t = ((Date.now() - start) / 1000) % (lineNum);
+
+            while (count < (t*speed)) {
+                let lineGap = Math.floor(lineNum / inputs[0].val);
+                d3.select('#lines').selectAll('line')
+                    .classed('active', false);
+
+                for (let i = 0; i < inputs[0].val; i++) {
+                    let lineSelect = Math.floor((count + i * lineGap) % (lineNum));
+                    d3.select('#line' + lineSelect)
+                        .classed('active', true);
+                }
+                count += 1;
             }
         }
     }
 
-    function dragStart() {
-        dragging = true;
-        d3.select(this).classed('active', true);
-    }
-
-    function dragEvent(index) {
-        if (index == 2) {
-            lineGap = Math.floor(sliderNums[0]*sections/sliderNums[2]);
-            sliderNums[index] = Math.floor(Math.max(Math.min(d3.event.x, 100),10)/20);
-            d3.select('#ball' + index).attr('cx', sliderNums[index]*20);
-        } else {
-            sliderNums[index] = Math.floor(Math.max(Math.min(d3.event.x, 100),10));
-            d3.select('#ball' + index).attr('cx', sliderNums[index]);
-        }
-
-        d3.select('#text' + index).text(sliderText[index] + sliderNums[index]);
-
-        if (index == 0) {
-            updateLines();
-        }
-    }
-
-    function dragEnd() {
-        dragging = false;
-        d3.select(this).classed('active', false);
-    }
-
-    function updateLines() {
-        gap = (height-margin)/(2*sliderNums[0]);
-        lineGap = Math.floor(sliderNums[0]*sections/sliderNums[2]);
-        d3.select('#lines').selectAll('line').classed('blank', true);
-        for (let i = 0; i < sliderNums[0]*sections; i++) {
+    function resetLines() {
+        let gap = (height-margin)/(2*inputs[1].val);
+        d3.select('#lines').selectAll('line').classed('hidden', true);
+        for (let i = 0; i < inputs[1].val*sections; i++) {
             d3.select('#line' + i)
-                .attr('x1', (sliderNums[0] - i%sliderNums[0])*gap)
-                .attr('y2', (i%sliderNums[0])*gap)
-                .attr('transform', 'rotate(' + Math.floor(i/sliderNums[0])*(360/sections) + ')')
-                .classed('blank', false);
+                .attr('x1', (inputs[1].val - i%inputs[1].val)*gap)
+                .attr('y2', (i%inputs[1].val)*gap)
+                .attr('transform', 'rotate(' + Math.floor(i/inputs[1].val)*(360/sections) + ')')
+                .classed('hidden', false);
         }
+        start = Date.now();
+        count = 0;
     }
+
+    function dragSlider(ball) {
+        let id = ball.attr('id');
+        id = id.substring(0, id.length - 4);
+        let index = -1;
+
+        switch(id) {
+            case inputs[0].id:
+                index = 0;
+                break;
+            case inputs[1].id:
+                index = 1;
+                break;
+            case inputs[2].id:
+                index = 2;
+                break;
+        }
+
+        let sliderScale = d3.scaleLinear()
+            .domain([0,100])
+            .range([inputs[index].min, inputs[index].max]);
+
+        inputs[index].val = Math.round(sliderScale(ball.attr('cx')));
+
+        resetLines();
+    }
+
 
 </script>
-
 </body>
-</html>
